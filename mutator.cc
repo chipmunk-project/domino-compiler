@@ -33,28 +33,34 @@ int main(int argc, const char **argv) {
       std::string domino_file_name = std::string(argv[1]);
       std::size_t pos_begin = domino_file_name.rfind("/");
       std::size_t pos_end = domino_file_name.find(".");
+
       domino_file_name =
           domino_file_name.substr(pos_begin + 1, pos_end - pos_begin - 1);
+     
+      // Fix the rand_seed value
+      std::srand(1);
 
       while (num_of_transformed_file != 11) {
-
         const auto string_to_parse = file_to_str(std::string(argv[1]));
         ChipmunkAnotherDominoGenerator AnotherDomino;
         auto chipmunk_another_domino_generator = SinglePass<>(
             std::bind(&ChipmunkAnotherDominoGenerator::ast_visit_transform,
                       AnotherDomino, _1));
 
-        int count = 0;
+        int mutation_num = 0;
         std::string sketch_program =
             chipmunk_another_domino_generator(string_to_parse);
 
-        while (count != 10) {
-          count++;
+        while (mutation_num != 10) {
+          mutation_num++;
           // random_num is to record which execution to take
           int random_num = rand() % 8 + 1;
+          // Now just avoid the change to add (3*4-12)*10
+          if (random_num == 6)
+            continue;
           if ((random_num == 8) || (random_num >= 1 && random_num <= 3)) {
             ChipmunkAnotherDominoGenerator another_domino;
-            another_domino.round = count;
+            another_domino.round = mutation_num;
             another_domino.rand = random_num;
             auto chipmunk_another_domino_generator = SinglePass<>(
                 std::bind(&ChipmunkAnotherDominoGenerator::ast_visit_transform,
