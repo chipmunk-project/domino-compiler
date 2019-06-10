@@ -55,8 +55,9 @@ int main(int argc, const char **argv) {
           mutation_num++;
           // random_num is to record which execution to take
           int random_num = rand() % 8 + 1;
-          // Now just avoid the change to add (3*4-12)*10
-          if (random_num == 6)
+          // Now just avoid the change to add (3*4-12)*10 and avoid 
+          // add too many temporary vars 
+          if (random_num == 6 || random_num == 1)
             continue;
           if ((random_num == 8) || (random_num >= 1 && random_num <= 3)) {
             ChipmunkAnotherDominoGenerator another_domino;
