@@ -7,12 +7,15 @@
 #include "ast_visitor.h"
 
 class ChipmunkCodeGenerator : public AstVisitor {
- public:
-  std::string ast_visit_transform(const clang::TranslationUnitDecl * tu_decl) override;
+public:
+  std::string
+  ast_visit_transform(const clang::TranslationUnitDecl *tu_decl) override;
 
- protected:
-  std::string ast_visit_member_expr(const clang::MemberExpr * member_expr) override;
-  std::string ast_visit_decl_ref_expr(const clang::DeclRefExpr * decl_ref_expr) override;
+protected:
+  std::string
+  ast_visit_member_expr(const clang::MemberExpr *member_expr) override;
+  std::string
+  ast_visit_decl_ref_expr(const clang::DeclRefExpr *decl_ref_expr) override;
 
   int count_stateful = 0;
   int count_stateless = 0;

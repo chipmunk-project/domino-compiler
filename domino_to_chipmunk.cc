@@ -1,5 +1,7 @@
 #include <csignal>
 #include <functional>
+#include <algorithm>
+#include <math.h> 
 #include <iostream>
 #include <set>
 #include <string>
@@ -28,9 +30,11 @@ int main(int argc, const char **argv) {
     if (argc == 2) {
       const auto string_to_parse = file_to_str(std::string(argv[1]));
 
+      ChipmunkCodeGenerator code_generator;
+
       auto chipmunk_code_generator =
           SinglePass<>(std::bind(&ChipmunkCodeGenerator::ast_visit_transform,
-                                 ChipmunkCodeGenerator(), _1));
+                                 &code_generator, _1));
 
       std::cout << "/* \n// Original program: \n" + string_to_parse + " */\n"
                 << std::endl;
