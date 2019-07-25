@@ -19,7 +19,7 @@
 using std::placeholders::_1;
 
 void print_usage() {
-  std::cerr << "Usage: constant_set <source_file> <bit_size> content/size"
+  std::cerr << "Usage: constant_set <source_file> <bit_size>"
             << std::endl;
 }
 
@@ -28,13 +28,9 @@ int main(int argc, const char **argv) {
     // Block out SIGINT, because we can't handle it properly
     signal(SIGINT, SIG_IGN);
 
-    if (argc == 4) {
+    if (argc == 3) {
       const auto string_to_parse = file_to_str(std::string(argv[1]));
       int bit_size = std::stoi(std::string(argv[2]));
-      // if output == content, output the content of constant_set
-      // if output == size, output the log(2,size) of the constant_set
-      std::string output = std::string(argv[3]);
-      assert(output == "content" or output == "size");
 
       ConstantSetGenerator constant_set_generator;
 
@@ -51,21 +47,16 @@ int main(int argc, const char **argv) {
       for (int i = 0; i != power; i++) {
         constant_set.insert(i);
       }
-      if (output == "content") {
-        // Output should be like the format {0,1,2,3}
-        std::string constant_group_vector = "{";
-        for (auto i : constant_set) {
-          if (constant_group_vector.length() != 1) {
-            constant_group_vector += ", ";
-          }
-          constant_group_vector += std::to_string(i);
+      // Output should be like the format {0,1,2,3}
+      std::string constant_group_vector = "{";
+      for (auto i : constant_set) {
+        if (constant_group_vector.length() != 1) {
+          constant_group_vector += ", ";
         }
-        constant_group_vector += "}";
-        std::cout << constant_group_vector << std::endl;
-      } else {
-        assert(output == "size");
-        std::cout << ceil(log2(constant_set.size())) << std::endl;
+        constant_group_vector += std::to_string(i);
       }
+      constant_group_vector += "}";
+      std::cout << constant_group_vector << std::endl;
 
       return EXIT_SUCCESS;
     } else {

@@ -27,5 +27,4 @@ constant_vector stores all the constants appearing in original program plus [0,1
 
 cmd line Instruction:
 Output generated .sk file: domino_to_chipmunk <source file name>
-Output constant_set content: constant_set <source file name> bit_size content
-Output constant_set log2(size): constant_set <source file name> bit_size size
+Output constant_set content: constant_set <source file name> bit_size
