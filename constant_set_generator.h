@@ -2,14 +2,14 @@
 #define CONSTANT_SET_GENERATOR_H_
 
 #include <string>
-#include <vector>
+#include <set>
 
 #include "ast_visitor.h"
 
 class ConstantSetGenerator : public AstVisitor {
 private:
   // Store the constants appearing in original program
-  std::set<int> constant_set;
+  std::set<int> constant_set = {};
 
 public:
   std::string
