@@ -47,16 +47,15 @@ int main(int argc, const char **argv) {
       for (int i = 0; i != power; i++) {
         constant_set.insert(i);
       }
-      // Output should be like the format {0,1,2,3}
-      std::string constant_group_vector = "{";
+      // Output should be like the format 0,1,2,3
+      std::string constant_group_vector_str = "";
       for (auto i : constant_set) {
-        if (constant_group_vector.length() != 1) {
-          constant_group_vector += ", ";
+        if (constant_group_vector_str.length() != 0) {
+          constant_group_vector_str += ", ";
         }
-        constant_group_vector += std::to_string(i);
+        constant_group_vector_str += std::to_string(i);
       }
-      constant_group_vector += "}";
-      std::cout << constant_group_vector << std::endl;
+      std::cout << constant_group_vector_str << std::endl;
 
       return EXIT_SUCCESS;
     } else {
