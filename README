@@ -2,7 +2,7 @@
 (Use a package manager like macports or apt-get to get them.)
 2. Get clang + llvm from https://releases.llvm.org/5.0.2/clang+llvm-5.0.2-x86_64-linux-gnu-ubuntu-16.04.tar.xz 
 This was tested only for macOS Mojave (10.14) and Ubuntu 16.04.
-3. Install sketch from https://people.csail.mit.edu/asolar/sketch-1.6.9.tar.gz,
+3. Install sketch from https://people.csail.mit.edu/asolar/sketch-1.7.5.tar.gz
 add the sketch binary to the path.
 4. Install banzai from https://github.com/packet-transactions/banzai.git
 5. git clone https://github.com/packet-transactions/domino-compiler.git
