@@ -13,6 +13,8 @@ add the sketch binary to the path.
 9. make check
 10. sudo make install (if you want to install it system wide).
 
+=============List of all random mutations used by Domino mutator =============
+
 rand = 1                               state_0 -----> p.tmp1 = state_0; state_0 = p.tmp1;
 rand = 2 if (condition_1) {do A;} else {do B;} -----> if(!condition_1) {do B;} else {do A;}
 rand = 3       if (condition_1 && condition_2) -----> if (condition_2 && condition_1) 
