@@ -5,13 +5,12 @@ This was tested only for macOS Mojave (10.14) and Ubuntu 16.04.
 3. Install sketch from https://people.csail.mit.edu/asolar/sketch-1.7.5.tar.gz
 add the sketch binary to the path.
 4. Install banzai from https://github.com/packet-transactions/banzai.git
-5. git clone https://github.com/packet-transactions/domino-compiler.git
-6. ./autogen.sh
-7. ./configure CLANG_DEV_LIBS=<wherever you untarred clang+llvm in step 2>
+5. ./autogen.sh
+6. ./configure CLANG_DEV_LIBS=<wherever you untarred clang+llvm in step 2>
 (make sure CLANG_DEV_LIBS is set to an absolute file system path)
-8. make
-9. make check
-10. sudo make install (if you want to install it system wide).
+7. make
+8. make check
+9. sudo make install (if you want to install it system wide).
 
 =============List of all random mutations used by Domino mutator =============
 
