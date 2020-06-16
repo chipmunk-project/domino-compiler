@@ -57,9 +57,11 @@ int main(int argc, const char **argv) {
           int random_num = rand() % 8 + 1;
           // Now just avoid the change to add (3*4-12)*10 and avoid 
           // add too many temporary vars 
-          if (random_num == 6 || random_num == 1)
+
+          // TODO: try to expand to other possible mutator generation ways
+          if (random_num != 2 && random_num != 3 && random_num != 7)
             continue;
-          if ((random_num == 8) || (random_num >= 1 && random_num <= 3)) {
+          if (random_num >= 1 && random_num <= 3) {
             ChipmunkAnotherDominoGenerator another_domino;
             another_domino.round = mutation_num;
             another_domino.rand = random_num;

@@ -9,6 +9,19 @@
 
 using namespace clang;
 
+// reference website:https://stackoverflow.com/questions/4654636/how-to-determine-if-a-string-is-a-number-with-c
+// to see whether a string only consists of numbers
+bool is_number(const std::string& s) {
+    std::string::const_iterator it = s.begin();
+    while (it != s.end() && std::isdigit(*it)) ++it;
+    return !s.empty() && it == s.end();
+}
+
+void remove_parenthesis(std::string& s) {
+    s.erase(s.begin());
+    s.erase(s.end() - 1);
+}
+
 std::string inst_block_printer(const InstBlock & iblock) {
   std::string ret = "";
   assert_exception(not iblock.empty());
@@ -177,17 +190,45 @@ std::map<uint32_t, std::vector<InstBlock>> generate_partitions(const CompoundStm
   for (const auto & body_pair : codelet_bodies) {
     uint32_t codelet_id = 0;
     const uint32_t stage_id = body_pair.first;
+    std::vector<std::string> lhs_var_vec;
+    std::vector<std::string> rhs_var_vec;
     for (const auto & codelet_body : body_pair.second) {
+      for (uint32_t i = 0; i < codelet_body.size(); i++) {
+          std::string lhs_str = clang_stmt_printer(codelet_body[i]->getLHS());
+          if (find(lhs_var_vec.begin(), lhs_var_vec.end(), lhs_str) == lhs_var_vec.end()) {
+               lhs_var_vec.push_back(lhs_str);
+          }
+          for (const auto * child : codelet_body[i]->getRHS()->children()) {
+              std::string child_str = clang_stmt_printer(child);
+              // TODO: find a better way to detect parenthesis and remove them
+              if (child_str[0] == '(') {
+                   remove_parenthesis(child_str);
+              }
+              if (!is_number(child_str)) {
+                  if (find(rhs_var_vec.begin(), rhs_var_vec.end(), child_str) == rhs_var_vec.end()) {
+                       rhs_var_vec.push_back(child_str);
+                  }
+              }
+          }
+      }
       codelets_for_drawing[stage_id][codelet_id] = codelet_body;
       max_codelet_id = std::max(max_codelet_id, codelet_id);
       codelet_id++;
       num_codelets++;
     }
+    uint32_t num_inherited_var = 0;
+    // num_inherited_var is the total num of all variables appearing in the rhs but not in the lhs
+    for (uint32_t i = 0; i < rhs_var_vec.size(); i++) {
+        if (find(lhs_var_vec.begin(), lhs_var_vec.end(), rhs_var_vec[i]) == lhs_var_vec.end()) {
+              num_inherited_var++;
+        }
+    }
+    max_codelet_id = std::max(max_codelet_id, num_inherited_var);
     max_stage_id = std::max(max_stage_id, stage_id);
   }
   std::cerr << draw_pipeline(codelets_for_drawing, condensed_graph) << std::endl;
   std::cout << "Total of " + std::to_string(max_stage_id + 1) + " stages" << std::endl;
-  std::cout << "Maximum of " + std::to_string(max_codelet_id  + 1) + " codelets/stage" << std::endl;
+  std::cout << "Maximum of " + std::to_string(max_codelet_id) + " codelets/stage" << std::endl;
   std::cout << "Total of " << num_codelets << " codelets" << std::endl;
   return codelet_bodies;
 }
