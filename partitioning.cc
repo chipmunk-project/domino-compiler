@@ -212,9 +212,9 @@ std::map<uint32_t, std::vector<InstBlock>> generate_partitions(const CompoundStm
           }
       }
       codelets_for_drawing[stage_id][codelet_id] = codelet_body;
-      max_codelet_id = std::max(max_codelet_id, codelet_id);
       codelet_id++;
       num_codelets++;
+      max_codelet_id = std::max(max_codelet_id, codelet_id);
     }
     uint32_t num_inherited_var = 0;
     // num_inherited_var is the total num of all variables appearing in the rhs but not in the lhs

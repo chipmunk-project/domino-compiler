@@ -8,6 +8,7 @@
 #include <sstream>
 #include <iostream>
 #include <tuple>
+#include <experimental/tuple>
 
 #include "clang/AST/ASTConsumer.h"
 #include "clang/AST/ASTContext.h"
@@ -77,7 +78,9 @@ class SinglePass  : public CompilerPass {
        auto partial_fn = [tu_decl, this] (const Args... t_args) { return this->transformer_(tu_decl, t_args...); };
 
        // Now pack the args_ tuple object into a parameter pack (http://en.cppreference.com/w/cpp/apply)
-       output_ = std::apply(partial_fn, args_);
+       // Fix from ref: https://stackoverflow.com/questions/57803556/why-i-get-error-apply-is-not-a-member-of-std
+       // We cannot directly use std::apply because of g++ version
+       output_ = std::experimental::apply(partial_fn, args_);
      }
 
      /// Get previously stored output
