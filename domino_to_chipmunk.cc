@@ -29,6 +29,7 @@ int main(int argc, const char **argv) {
 
     if (argc == 2) {
       const auto string_to_parse = file_to_str(std::string(argv[1]));
+      std::string file_name = std::string(argv[1]);
 
       ChipmunkCodeGenerator code_generator;
 
@@ -36,11 +37,15 @@ int main(int argc, const char **argv) {
           SinglePass<>(std::bind(&ChipmunkCodeGenerator::ast_visit_transform,
                                  &code_generator, _1));
 
-      std::cout << "/* \n// Original program: \n" + string_to_parse + " */\n"
-                << std::endl;
+      std::string sketch_program = "/* \n// Original program: \n" + string_to_parse + " */\n";
 
-      std::string sketch_program = chipmunk_code_generator(string_to_parse);
-      std::cout << sketch_program << std::endl;
+      sketch_program += chipmunk_code_generator(string_to_parse);
+
+      std::string output_filename = file_name.substr(0, file_name.rfind('.')) + ".sk";
+      std::ofstream myfile;
+      myfile.open(output_filename.c_str());
+      myfile << sketch_program;
+      myfile.close();
 
       return EXIT_SUCCESS;
     } else {

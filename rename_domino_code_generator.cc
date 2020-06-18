@@ -25,13 +25,16 @@ std::string RenameDominoCodeGenerator::ast_visit_transform(
 
   // TODO: Need to check if we have more than one packet func per tu_decl and
   // report an error if so.
+  std::string stateful_var_def = "";
+  std::string struct_def = "";
+  std::string other_func_def = "";
   for (const auto *decl : dyn_cast<DeclContext>(tu_decl)->decls()) {
     if (isa<FunctionDecl>(decl) and
         (is_packet_func(dyn_cast<FunctionDecl>(decl)))) {
       // record body part first
       std::string body_part =
           ast_visit_stmt(dyn_cast<FunctionDecl>(decl)->getBody());
-      return "void func(struct Packet p) {\n" + body_part + "\n}";
+      return struct_def + stateful_var_def + other_func_def + "void func(struct Packet p) {\n" + body_part + "\n}";
     } else if (isa<VarDecl>(decl) || isa<RecordDecl>(decl)) {
       if (isa<VarDecl>(decl)){
         //Pay special attention to the definition without initialization
@@ -44,7 +47,7 @@ std::string RenameDominoCodeGenerator::ast_visit_transform(
           }else{
             stateful_var_name = dyn_cast<VarDecl>(decl)->getNameAsString();
           }
-          std::cout << "int " + stateful_var_name + ";\n";
+          stateful_var_def += ("int " + stateful_var_name + ";\n");
           continue;
         }
         //dyn_cast<VarDecl>(decl)->getDefinition() gets the var_name i.e int count = 0; --> count
@@ -66,10 +69,10 @@ std::string RenameDominoCodeGenerator::ast_visit_transform(
           stateful_var_name = var_name;
         }
         //Return the result ## need some special help for the array_vars
-        std::cout << "int " + stateful_var_name + " = " + init_val +";\n";
+        stateful_var_def += ("int " + stateful_var_name + " = " + init_val +";\n");
       }else if (isa<RecordDecl>(decl)){
         //dyn_cast<RecordDecl>(decl)->getNameAsString() get the name of the struct
-        std::cout << "struct " + dyn_cast<RecordDecl>(decl)->getNameAsString() + "{" << std::endl;
+        struct_def += "struct " + dyn_cast<RecordDecl>(decl)->getNameAsString() + "{\n";  
         for (const auto * field_decl : dyn_cast<DeclContext>(decl)->decls()){
           std::string pkt_vars = dyn_cast<FieldDecl>(field_decl)->getNameAsString();
           //TODO: to see whether this stateless_vars has appeared in the function body
@@ -82,13 +85,13 @@ std::string RenameDominoCodeGenerator::ast_visit_transform(
             stateless_var_name = pkt_vars;
           }
           //dyn_cast<FieldDecl>(field_decl)->getNameAsString() get the name of pkt_vars
-          std::cout << "    int " + stateless_var_name + ";" << std::endl;
+          struct_def += "    int " + stateless_var_name + ";\n";
         }
-        std::cout << "};\n";
+        struct_def += "};\n";
       }
     } else if ((isa<FunctionDecl>(decl) and
                 (not is_packet_func(dyn_cast<FunctionDecl>(decl))))) {
-      std::cout << clang_decl_printer(decl) << "\n";
+      other_func_def += clang_decl_printer(decl);
     }
   }
 
