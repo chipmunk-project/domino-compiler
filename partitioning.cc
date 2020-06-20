@@ -9,6 +9,26 @@
 
 using namespace clang;
 
+typedef std::map<std::string, std::vector<std::string>> s_to_vec_map;
+
+void output_to_file(s_to_vec_map &influ_map) {
+  
+  s_to_vec_map::iterator it;
+  std::string influence_str = "";
+  for (it = influ_map.begin(); it != influ_map.end(); it++) {
+    influence_str += it->first + ":";
+    for (uint32_t i = 0; i < it->second.size() - 1; i++) {
+      influence_str += it->second[i] + ",";
+    }
+    influence_str += it->second.back() + ";\n";
+  }
+  std::string output_filename = "/tmp/influence_map.txt";
+  std::ofstream myfile;
+  myfile.open(output_filename.c_str());
+  myfile << influence_str;
+  myfile.close();
+}
+
 // reference website:https://stackoverflow.com/questions/4654636/how-to-determine-if-a-string-is-a-number-with-c
 // to see whether a string only consists of numbers
 bool is_number(const std::string& s) {
@@ -21,6 +41,289 @@ void remove_parenthesis(std::string& s) {
     s.erase(s.begin());
     s.erase(s.end() - 1);
 }
+
+bool is_state_var(const std::string &s) {
+    if (find(s.begin(), s.end(), '.') == s.end() or
+        (find(s.begin(), s.end(), '.') != s.end() and find(s.begin(), s.end(), '[') != s.end())) {
+      return true;
+    } else {
+      return false;
+    }
+}
+
+bool char_is_num(char c) {
+  if (c >= '0' && c <= '9') {
+    return true;
+  } else {
+    return false;
+  }
+}
+
+bool is_pkt_field(const std::string &s) {
+    if (find(s.begin(), s.end(), '.') != s.end() and 
+         (s.find_first_of("0123456789") == std::string::npos or
+         !char_is_num(s.back()))) {
+      return true;
+    } else {
+      return false;
+    }
+}
+
+// Remove the num char in tail at most twice
+std::string remove_num_in_str(std::string s) {
+  assert (s.length() > 0);
+  int count = 0;
+  while (s.back() >= '0' and s.back() <= '9' and count < 2) {
+    count++;
+    s.pop_back();
+  }
+  return s;
+}
+
+std::string get_last_num_str(std::string s) {
+  std::string ret_str = "";
+  for (unsigned long i = s.length() - 1; i >= 0; i--) {
+    if (char_is_num(s[i])) {
+      ret_str.insert(ret_str.begin(), s[i]);
+    } else {
+      break;
+    }
+  }
+  return ret_str;
+}
+
+void print_map(s_to_vec_map &dep_map) {
+  std::cout << "start printing the map: " << std::endl;
+  s_to_vec_map::iterator it;
+  for (it = dep_map.begin(); it != dep_map.end(); it++) {
+    std::cout << "it->first(key) = " << it->first;
+    std::cout << "  it->second(val) = ";
+    for (uint32_t i = 0; i < it->second.size(); i++) {
+      std::cout << it->second[i] << ",";
+    }
+    std::cout << std::endl;
+  }
+}
+
+// Get the real influencers
+void simplify_map(s_to_vec_map &ret_map) {
+  std::vector<std::string> lhs_vec;
+  std::vector<std::string> state_var_vec;
+  // get the pkt_field name
+  std::vector<std::string> pkt_field_vec;
+  // Fill in lhs_vec
+  s_to_vec_map::iterator it;
+  for (it = ret_map.begin(); it != ret_map.end(); it++) {
+    lhs_vec.push_back(it->first);
+  }
+  // Add new members which only appear in RHS
+  for (it = ret_map.begin(); it != ret_map.end(); it++) {
+    for (uint32_t i = 0; i < it->second.size(); i++) {
+      if (find(lhs_vec.begin(), lhs_vec.end(), it->second[i]) == lhs_vec.end()) {
+        ret_map[it->second[i]] = {it->second[i]};
+      }
+    }
+  }
+
+  // Which member should be stored in remain vec (rem_vec)
+  std::vector<std::string> rem_vec;
+  // Get all state_var members and pkt_fields in LHS
+  for (it = ret_map.begin(); it != ret_map.end(); it++) {
+    if (is_state_var(it->first)) {
+      rem_vec.push_back(it->first);
+    } else if (is_pkt_field(it->first)) {
+      pkt_field_vec.push_back(it->first);
+    }
+  }
+
+  // Fill in pkt_fields again
+  // ex. p.now_plus_free0: p.now_plus_free0 p.now
+  for (it = ret_map.begin(); it != ret_map.end(); it++) {
+    if (is_state_var(it->first)) {
+      continue;
+    }
+    int flag = 0;
+    for (uint32_t i = 0; i < pkt_field_vec.size(); i++) {
+      // tmp to store pkt fields
+      if (it->first.find(pkt_field_vec[i]) != std::string::npos and
+          it->first.length() > pkt_field_vec[i].length() and
+          char_is_num(it->first[pkt_field_vec[i].length()])) {
+        flag = 1;
+        break;
+      }
+    }
+    for (uint32_t i = 0; i < rem_vec.size(); i++) {
+      // tmp to store stateful var
+      if (it->first.find(rem_vec[i]) != std::string::npos) {
+        flag = 1;
+        break;
+      }
+    }
+    if (flag == 0) {
+      // remove the latter num
+      std::string new_pkt_str = remove_num_in_str(it->first);
+      int add_flag = 1;
+      for (uint32_t i = 0; i < rem_vec.size(); i++) {
+        if (is_state_var(rem_vec[i]) and rem_vec[i].find('[') != std::string::npos) {
+          std::string match_str = rem_vec[i].substr(0, rem_vec[i].find('['));
+          std::size_t pos = new_pkt_str.find(match_str);
+          if (pos != std::string::npos) {
+            if (pos + match_str.length() == new_pkt_str.length()) {
+              add_flag = 0;
+              break;
+            }
+          }
+        }
+      }
+      if (add_flag == 1 && find(pkt_field_vec.begin(), pkt_field_vec.end(), new_pkt_str) == pkt_field_vec.end()) {
+        pkt_field_vec.push_back(new_pkt_str);
+      }
+    }
+  }
+
+  // TODO: build a map to store how many members in LHS
+  for (uint32_t i = 0; i < pkt_field_vec.size(); i++) {
+    int curr_val = -2;
+    std::string tmp_num_str;
+    for (it = ret_map.begin(); it != ret_map.end(); it++) {
+      // Do not need to care about stateful var
+      if (is_state_var(it->first)) {
+        continue;
+      }
+      // Only care if the name is pkt.field + "num"
+      if (it->first.find(pkt_field_vec[i]) != std::string::npos) {
+        if (it->first.length() == pkt_field_vec[i].length()) {
+          // This means they have the same name
+          curr_val = -1;
+        } else {
+          assert(it->first.length() > pkt_field_vec[i].length());
+          // To avoid the case where p.now and p.now_plus_free are two pkt fields in program
+          if (char_is_num(it->first[pkt_field_vec[i].length()])) {
+             // we should record the number allocated to that pkt field
+             curr_val = 3;
+             tmp_num_str = get_last_num_str(it->first);
+          }
+        }
+      }
+    }
+    if (curr_val != -2) {
+      if (curr_val == -1) {
+        rem_vec.push_back(pkt_field_vec[i]);
+      } else  {
+        rem_vec.push_back(pkt_field_vec[i] + tmp_num_str);
+      } 
+    }
+  }
+  
+  std::vector<std::string> erase_vec;
+  for (it = ret_map.begin(); it != ret_map.end(); it++) {
+    if (find(rem_vec.begin(), rem_vec.end(), it->first) == rem_vec.end()) {
+      erase_vec.push_back(it->first);
+    }
+  }
+  for (uint32_t i = 0; i < erase_vec.size(); i++) {
+    ret_map.erase(erase_vec[i]);
+  }
+
+  s_to_vec_map tmp_map;
+  std::vector<std::string> erase_key_vec;
+  // Only remain the variables appearing in the program
+  for (it = ret_map.begin(); it != ret_map.end(); it++) {
+    if (!is_state_var(it->first) and char_is_num(it->first.back())) {
+      std::string new_key = remove_num_in_str(it->first);
+      for (uint32_t i = 0; i < it->second.size();) {
+        if (!is_state_var(it->second[i]) and char_is_num(it->second[i].back())) {
+          it->second.erase(it->second.begin() + i);
+        } else {
+          i++;
+        }
+      }
+      tmp_map[new_key] = it->second;
+      erase_key_vec.push_back(it->first);
+    } else  {
+      for (uint32_t i = 0; i < it->second.size();) {
+        if (!is_state_var(it->second[i]) and char_is_num(it->second[i].back())) {
+          it->second.erase(it->second.begin() + i);
+        } else {
+          i++;
+        }
+      }
+    }
+  }
+
+  // Remove the members stored in the erase_key_vec
+  for (uint32_t i = 0; i < erase_key_vec.size(); i++) {
+    ret_map.erase(erase_key_vec[i]);
+  }
+  // Add members stored in tmp_map
+  for (it = tmp_map.begin(); it != tmp_map.end(); it++) {
+    ret_map[it->first] = it->second;
+  }
+
+  // Add the rest members stored in pkt_field_vec
+  for (it = ret_map.begin(); it != ret_map.end(); it++) {
+    std::vector<std::string>::iterator itr = find(pkt_field_vec.begin(), pkt_field_vec.end(), it->first);
+    if (itr != pkt_field_vec.end()) {
+      pkt_field_vec.erase(itr);
+    }
+  }
+  for (uint32_t i = 0; i < pkt_field_vec.size(); i++) {
+    ret_map[pkt_field_vec[i]] = {pkt_field_vec[i]};
+  }
+}
+
+
+// Get the map that shows which var influence our target var
+s_to_vec_map get_influence(s_to_vec_map dependency_map) {
+    s_to_vec_map ret_map = dependency_map;
+    s_to_vec_map::iterator it;
+    for (it = ret_map.begin(); it != ret_map.end(); it++) {
+        // No need to deal with tmp vars
+        if (it->first.find(".tmp") == std::string::npos) {
+            it->second.insert(it->second.begin(), it->first);
+            bool flag = 1;
+            while (flag != 0) {
+              flag = 0;
+              for (uint32_t i = 1; i < it->second.size(); ) {
+                if (is_state_var(it->second[i])) {
+                  i++;
+                  continue;
+                }
+                if (dependency_map[it->second[i]].size() == 0) {
+                  if (it->second[i].find(".tmp") != std::string::npos) {
+                    it->second.erase(it->second.begin() + i);
+                  } else {
+                    i++;
+                  }
+                } else {
+                   for (uint32_t j = 0; j < dependency_map[it->second[i]].size(); j++) {
+                     if (find(it->second.begin(), it->second.end(), dependency_map[it->second[i]][j]) == it->second.end() 
+                         and dependency_map[it->second[i]][j] != it->first) {
+                        it->second.push_back(dependency_map[it->second[i]][j]);
+                        flag = 1;
+                     }
+                   }
+                   it->second.erase(it->second.begin() + i);
+                }
+              }
+            }
+       }
+    }
+    // Erase tmp in ret_map
+    std::vector<std::string> erase_vec;
+    for (it = ret_map.begin(); it != ret_map.end(); it++) { 
+      if (it->first.find(".tmp") != std::string::npos) {
+        erase_vec.push_back(it->first);
+      }
+    }
+
+    for (uint32_t i = 0; i < erase_vec.size(); i++) {
+      ret_map.erase(erase_vec[i]);
+    }
+    simplify_map(ret_map);
+    return ret_map;
+}
+
 
 std::string inst_block_printer(const InstBlock & iblock) {
   std::string ret = "";
@@ -187,6 +490,8 @@ std::map<uint32_t, std::vector<InstBlock>> generate_partitions(const CompoundStm
   uint32_t max_codelet_id  = 0;
   uint32_t num_codelets = 0;
   PipelineDrawing codelets_for_drawing;
+  // Dependency map store all dependencies
+  s_to_vec_map dependency_map;
   for (const auto & body_pair : codelet_bodies) {
     uint32_t codelet_id = 0;
     const uint32_t stage_id = body_pair.first;
@@ -204,9 +509,15 @@ std::map<uint32_t, std::vector<InstBlock>> generate_partitions(const CompoundStm
               if (child_str[0] == '(') {
                    remove_parenthesis(child_str);
               }
+              // if child_str is a number, we can ignore it
               if (!is_number(child_str)) {
+                  // if child_str is not in the rhs_vec, we should add it in
                   if (find(rhs_var_vec.begin(), rhs_var_vec.end(), child_str) == rhs_var_vec.end()) {
                        rhs_var_vec.push_back(child_str);
+                  }
+                  // if child_str is not in the dependency_map[lhs_str] vec, then we should add it in
+                  if (find(dependency_map[lhs_str].begin(), dependency_map[lhs_str].end(), child_str) == dependency_map[lhs_str].end()) {
+                       dependency_map[lhs_str].push_back(child_str);
                   }
               }
           }
@@ -226,6 +537,10 @@ std::map<uint32_t, std::vector<InstBlock>> generate_partitions(const CompoundStm
     max_codelet_id = std::max(max_codelet_id, num_inherited_var);
     max_stage_id = std::max(max_stage_id, stage_id);
   }
+  // influ_map: key is stateful var/pkt field
+  //            val is stateful vars and pkt fields that influence its key
+  s_to_vec_map influ_map = get_influence(dependency_map);
+  output_to_file(influ_map); 
   std::cerr << draw_pipeline(codelets_for_drawing, condensed_graph) << std::endl;
   std::cout << "Total of " + std::to_string(max_stage_id + 1) + " stages" << std::endl;
   std::cout << "Maximum of " + std::to_string(max_codelet_id) + " codelets/stage" << std::endl;
