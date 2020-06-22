@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <iostream>
+#include <fstream>
 #include <map>
 #include <string>
 
@@ -21,6 +22,7 @@ std::string ChipmunkCodeGenerator::ast_visit_transform(
       // record body part first
       std::string body_part =
           ast_visit_stmt(dyn_cast<FunctionDecl>(decl)->getBody());
+      print_map();
       return "|StateAndPacket| program (|StateAndPacket| state_and_packet) "
              "{\n" +
              body_part + "  return state_and_packet;\n}";
@@ -71,4 +73,19 @@ std::string ChipmunkCodeGenerator::ast_visit_member_expr(
     c_to_sk[s] = name;
   }
   return c_to_sk[s];
+}
+
+void ChipmunkCodeGenerator::print_map() {
+  if (c_to_sk.size() == 0 )
+    return;
+  std::string filename = "/tmp/domino_to_chipmunk_map.txt";
+  std::string output_str = "";
+  for(std::map<std::string, std::string >::const_iterator it = c_to_sk.begin();
+    it != c_to_sk.end(); ++it){
+    output_str += (it->first + ":" + it->second + "\n");
+  }
+  std::ofstream myfile;
+  myfile.open(filename.c_str());
+  myfile << output_str;
+  myfile.close();
 }

@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <iostream>
+#include <fstream>
 #include <map>
 #include <string>
 
@@ -13,7 +14,7 @@ using namespace clang;
 
 std::string RenameDominoCodeGenerator::ast_visit_transform(
     const clang::TranslationUnitDecl *tu_decl) {
-  // TODO: First pass to set up the map
+  // First pass to set up the map
   for (const auto *decl : dyn_cast<DeclContext>(tu_decl)->decls()) {
     if (isa<FunctionDecl>(decl) and
         (is_packet_func(dyn_cast<FunctionDecl>(decl)))) {
@@ -21,7 +22,6 @@ std::string RenameDominoCodeGenerator::ast_visit_transform(
           ast_visit_stmt(dyn_cast<FunctionDecl>(decl)->getBody());
     }
   }
-//  print_map();
 
   // TODO: Need to check if we have more than one packet func per tu_decl and
   // report an error if so.
@@ -34,6 +34,7 @@ std::string RenameDominoCodeGenerator::ast_visit_transform(
       // record body part first
       std::string body_part =
           ast_visit_stmt(dyn_cast<FunctionDecl>(decl)->getBody());
+      print_map();
       return struct_def + stateful_var_def + other_func_def + "void func(struct Packet p) {\n" + body_part + "\n}";
     } else if (isa<VarDecl>(decl) || isa<RecordDecl>(decl)) {
       if (isa<VarDecl>(decl)){
@@ -54,34 +55,43 @@ std::string RenameDominoCodeGenerator::ast_visit_transform(
         std::string var_name = clang_value_decl_printer(dyn_cast<VarDecl>(decl)->getDefinition());
         //dyn_cast<VarDecl>(decl)->getInit() get initial value i.e int count = 0; --> the initializer is 0
         std::string init_val = clang_stmt_printer(dyn_cast<VarDecl>(decl)->getInit());
-        //TODO: to see whether the stateful_var is an array or not
+        //to see whether the stateful_var is an array or not
         std::size_t found = init_val.find('{');
         if (found != std::string::npos){
           var_name += '[';
         }
-        //TODO: to see whether this stateful_vars has appeared in the function body
+        //to see whether this stateful_vars has appeared in the function body
         std::string stateful_var_name; //stateful_var_name store the name which should appear in the definition part
         std::map<std::string,std::string>::iterator it;
-        it = c_to_sk.find(var_name);
-        if (it != c_to_sk.end()){
-          stateful_var_name = c_to_sk[var_name];
-        }else{
-          stateful_var_name = var_name;
+        for (it = c_to_sk.begin(); it != c_to_sk.end(); it++) {
+          if (it->first.find(var_name) != std::string::npos) {
+            stateful_var_name = it->second;
+          }
         }
         //Return the result ## need some special help for the array_vars
-        stateful_var_def += ("int " + stateful_var_name + " = " + init_val +";\n");
+        stateful_var_def += ("int " + stateful_var_name + " = 0;\n");
       }else if (isa<RecordDecl>(decl)){
         //dyn_cast<RecordDecl>(decl)->getNameAsString() get the name of the struct
         struct_def += "struct " + dyn_cast<RecordDecl>(decl)->getNameAsString() + "{\n";  
         for (const auto * field_decl : dyn_cast<DeclContext>(decl)->decls()){
           std::string pkt_vars = dyn_cast<FieldDecl>(field_decl)->getNameAsString();
-          //TODO: to see whether this stateless_vars has appeared in the function body
+          //to see whether this stateless_vars has appeared in the function body
           std::string stateless_var_name; //stateful_var_name store the name which should appear in the definition part
           std::map<std::string,std::string>::iterator it;
-          it = c_to_sk.find(pkt_vars);
-          if (it != c_to_sk.end()){
-            stateless_var_name = c_to_sk[pkt_vars];
-          }else{
+          int ass_flag = 0;
+          for (it = c_to_sk.begin(); it != c_to_sk.end(); it++) {
+            if (it->first.find("p." + pkt_vars) != std::string::npos) {
+              std::string map_key = "p." + pkt_vars;
+              stateless_var_name = c_to_sk[map_key].substr(c_to_sk[map_key].find('.') + 1);
+              ass_flag = 1;
+            }
+            if (it->first.find("pkt." + pkt_vars) != std::string::npos) {
+              std::string map_key = "pkt." + pkt_vars;
+              stateless_var_name = c_to_sk[map_key].substr(c_to_sk[map_key].find('.') + 1);
+              ass_flag = 1;
+            }
+          }
+          if (ass_flag == 0) {
             stateless_var_name = pkt_vars;
           }
           //dyn_cast<FieldDecl>(field_decl)->getNameAsString() get the name of pkt_vars
@@ -123,8 +133,6 @@ std::string RenameDominoCodeGenerator::ast_visit_member_expr(
     const clang::MemberExpr *member_expr) {
   assert_exception(member_expr);
   std::string s = clang_stmt_printer(member_expr);
-  // TODO p.src -> src
-  s = s.substr(s.find('.') + 1);
   std::map<std::string, std::string>::iterator it;
   it = c_to_sk.find(s);
   if (it == c_to_sk.end()) {
@@ -137,9 +145,9 @@ std::string RenameDominoCodeGenerator::ast_visit_member_expr(
       // Should never get here.
       assert_exception(false);
     }
-    c_to_sk[s] = name;
+    c_to_sk[s] = "p." + name;
   }
-  return "p." + c_to_sk[s];
+  return c_to_sk[s];
 }
 
 std::string RenameDominoCodeGenerator::ast_visit_array_subscript_expr(
@@ -148,7 +156,7 @@ std::string RenameDominoCodeGenerator::ast_visit_array_subscript_expr(
   std::string s = clang_stmt_printer(array_subscript_expr);
 
   std::map<std::string, std::string>::iterator it;
-  std::string name_in_origin_program = s.substr(0, s.find('[') + 1);
+  std::string name_in_origin_program = s.substr(0, s.find(']') + 1);
   it = c_to_sk.find(name_in_origin_program);
   if (it == c_to_sk.end()) {
     std::string name;
@@ -168,10 +176,14 @@ std::string RenameDominoCodeGenerator::ast_visit_array_subscript_expr(
 void RenameDominoCodeGenerator::print_map() {
   if (c_to_sk.size() == 0 )
     return;
-  std::cout << "// Print map" << std::endl;
+  std::string filename = "/tmp/canonicalizer_map.txt";
+  std::string output_str = "";
   for(std::map<std::string, std::string >::const_iterator it = c_to_sk.begin();
     it != c_to_sk.end(); ++it){
-    std::cout << "//" << it->first << " = " << it->second << "\n";
+    output_str += (it->first + ":" + it->second + "\n");
   }
-  std::cout << std::endl;  
+  std::ofstream myfile;
+  myfile.open(filename.c_str());
+  myfile << output_str;
+  myfile.close();
 }

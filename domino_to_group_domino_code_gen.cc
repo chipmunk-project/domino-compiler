@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <iostream>
+#include <fstream>
 #include <map>
 #include <string>
 
@@ -21,6 +22,7 @@ std::string DominoToGroupDominoCodeGenerator::ast_visit_transform(
       // record body part first
       std::string body_part =
           ast_visit_stmt(dyn_cast<FunctionDecl>(decl)->getBody());
+      print_map();
       return res + "void " + dyn_cast<FunctionDecl>(decl)->getNameAsString() +
              "(" +
              dyn_cast<FunctionDecl>(decl)
@@ -95,17 +97,6 @@ std::string DominoToGroupDominoCodeGenerator::ast_visit_transform(
         }
         res += "};\n";
       }
-
-      /*
-               std::string str = clang_decl_printer(decl);
-               for (std::map<std::string,std::string>::iterator it =
-         c_to_sk.begin();it != c_to_sk.end();it++){ size_t start_pos =
-         str.find(it->first); if (start_pos == std::string::npos){ continue;
-                 }else if (str[start_pos-1]==' '){
-                    str.replace(start_pos,it->first.length(),it->second);
-                 }
-               }
-               res += str + ";\n";*/
     } else if ((isa<FunctionDecl>(decl) and
                 (not is_packet_func(dyn_cast<FunctionDecl>(decl))))) {
       res += clang_decl_printer(decl) + "\n";
@@ -124,4 +115,21 @@ std::string DominoToGroupDominoCodeGenerator::ast_visit_decl_ref_expr(
     return c_to_sk[s];
   } else
     return s;
+}
+
+void DominoToGroupDominoCodeGenerator::print_map() {
+  if (c_to_sk.size() == 0 )
+    return;
+  // TODO: find a better way to give different filename for different group methods
+  std::string filename = "/tmp/grouper_map.txt";
+
+  std::string output_str = "";
+  for(std::map<std::string, std::string >::const_iterator it = c_to_sk.begin();
+    it != c_to_sk.end(); ++it){
+    output_str += (it->first + ":" + it->second + "\n");
+  }
+  std::ofstream myfile;
+  myfile.open(filename.c_str());
+  myfile << output_str;
+  myfile.close();
 }

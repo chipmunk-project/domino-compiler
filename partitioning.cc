@@ -11,24 +11,6 @@ using namespace clang;
 
 typedef std::map<std::string, std::vector<std::string>> s_to_vec_map;
 
-void output_to_file(s_to_vec_map &influ_map) {
-  
-  s_to_vec_map::iterator it;
-  std::string influence_str = "";
-  for (it = influ_map.begin(); it != influ_map.end(); it++) {
-    influence_str += it->first + ":";
-    for (uint32_t i = 0; i < it->second.size() - 1; i++) {
-      influence_str += it->second[i] + ",";
-    }
-    influence_str += it->second.back() + ";\n";
-  }
-  std::string output_filename = "/tmp/influence_map.txt";
-  std::ofstream myfile;
-  myfile.open(output_filename.c_str());
-  myfile << influence_str;
-  myfile.close();
-}
-
 // reference website:https://stackoverflow.com/questions/4654636/how-to-determine-if-a-string-is-a-number-with-c
 // to see whether a string only consists of numbers
 bool is_number(const std::string& s) {
@@ -90,6 +72,46 @@ std::string get_last_num_str(std::string s) {
     }
   }
   return ret_str;
+}
+
+// turn filter1[pkt.filter1_idx00] into filter1[pkt.filter1_idx]
+std::string remove_num_in_index(std::string s) {
+    std::string index_str = s.substr(s.find('[') + 1, s.find(']') - s.find('[') - 1);
+    index_str = remove_num_in_str(index_str);
+    return s.substr(0, s.find('[') + 1) + index_str + "]";
+}
+
+void output_to_file(s_to_vec_map &influ_map) {
+  s_to_vec_map::iterator it;
+  std::string influence_str = "";
+  for (it = influ_map.begin(); it != influ_map.end(); it++) {
+    std::string first_str;
+    if (it->first.back() == ']' and char_is_num(it->first[it->first.length() - 2])) {
+       // Get substr index
+       first_str = remove_num_in_index(it->first);
+    } else {
+       first_str = it->first;
+    }
+    influence_str += first_str + ":";
+    for (uint32_t i = 0; i < it->second.size(); i++) {
+      std::string second_str;
+      if (it->second[i].back() == ']' and char_is_num(it->second[i][it->second[i].length() - 2])) {
+         second_str = remove_num_in_index(it->second[i]);
+      } else {
+         second_str = it->second[i];
+      }
+      if (i == it->second.size() - 1) {
+          influence_str += second_str + "\n";
+      } else {
+          influence_str += second_str + ",";
+      }
+    }
+  }
+  std::string output_filename = "/tmp/influence_map.txt";
+  std::ofstream myfile;
+  myfile.open(output_filename.c_str());
+  myfile << influence_str;
+  myfile.close();
 }
 
 void print_map(s_to_vec_map &dep_map) {

@@ -21,6 +21,9 @@ protected:
   std::string
   ast_visit_decl_ref_expr(const clang::DeclRefExpr *decl_ref_expr) override;
 
+  //Print the map content
+  void print_map();
+
   // TODO: This strange typedef is to address an issue with gcc:
   // https://stackoverflow.com/a/28803798/1152801
   typedef std::map<std::string, std::string> DominoToGroupDomino;
