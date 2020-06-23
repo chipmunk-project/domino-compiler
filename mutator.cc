@@ -32,7 +32,8 @@ int main(int argc, const char **argv) {
       int num_of_transformed_file = 1;
       std::string domino_file_name = std::string(argv[1]);
       std::size_t pos_begin = domino_file_name.rfind("/");
-      std::size_t pos_end = domino_file_name.find(".");
+      // avoid the case where the file name may be like ../domino-example/rcp.c
+      std::size_t pos_end = domino_file_name.rfind(".c");
 
       domino_file_name =
           domino_file_name.substr(pos_begin + 1, pos_end - pos_begin - 1);
