@@ -64,7 +64,7 @@ std::string remove_num_in_str(std::string s) {
 
 std::string get_last_num_str(std::string s) {
   std::string ret_str = "";
-  for (unsigned long i = s.length() - 1; i >= 0; i--) {
+  for (unsigned long i = s.length() - 1; i != 0; i--) {
     if (char_is_num(s[i])) {
       ret_str.insert(ret_str.begin(), s[i]);
     } else {
