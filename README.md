@@ -16,12 +16,19 @@ add the sketch binary to the path.
 For now we only choose rand = 2, 3, 7
 
 rand = 1: add redundant temporary vars                                           state_0 -----> p.tmp1 = state_0; state_0 = p.tmp1;
+
 rand = 2: switch if-else statement                 if (condition_1) {do A;} else {do B;} -----> if(!condition_1) {do B;} else {do A;}
+
 rand = 3: switch the order within if clause              if (condition_1 && condition_2) -----> if (condition_2 && condition_1)
+
 rand = 4: add obvious false statement                                                    -----> if (0 == 1) {p.tmp_7 = 0 - p.tmp_7;}
+
 rand = 5: plus 0 by adding 1 - 1                                                 p.tmp_7 -----> p.tmp_7 = p.tmp_7+1-1;
+
 rand = 6: plus 0 by adding (3*4 - 12)*10                              state_0 = state_1; -----> state_0 = state_1 + (3*4-12)*10;
+
 rand = 7: add (1 == 1) to if condition                          if (condition_1) {do A;} -----> if (condition_1 && 1==1) {do A;}
+
 rand = 8: add obvious true statement                                    if (condition_1) -----> if (condition_1 && (p.tmp_7==p.tmp_7+1-1))
 
 Note:
